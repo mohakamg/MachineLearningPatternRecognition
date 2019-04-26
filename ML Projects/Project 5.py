@@ -1,9 +1,3 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# In[115]:
-
-
 # Import Libraries
 import numpy as np
 from sklearn import preprocessing
@@ -21,7 +15,7 @@ class DeepNN:
     # Constructor to build the structure of the Neural Network
     # It accepts the layers in the format of [2,3,1] -> 2 Neuron Input Layer,
     # 3 Neuron Hidden Layer and 1 Neuron output layer
-    def __init__(self, layers, activations):
+    def __init__(self, layers, activations, epsilon = 0.55):
         ############################### Initialize the number of layers and neurons
         self.layers = layers
         self.num_layers = len(layers)
@@ -31,7 +25,7 @@ class DeepNN:
 
         ########## Intialize parameters for Forward Propogation
         # Initialize Weights
-        self.epsilon = 0.12  # Random Weight Initialization Factor
+        self.epsilon = epsilon  # Random Weight Initialization Factor
         self.weights = []
         for i in range(self.num_layers-2):
             self.weights.append(np.random.randn(layers[i]+1, layers[i+1]+1)*2*self.epsilon - self.epsilon)
@@ -50,11 +44,11 @@ class DeepNN:
         self.scaler = preprocessing.StandardScaler()
 
     ################################### Define Some Activation Functions and their derivatives ##################
-    def sigmoid(self,z):
-        return 1.0/(1.0 + np.exp(-z))
+    def sigmoid(self,x):
+        return 1.0/(1.0 + np.exp(-x))
 
-    def sigmoidPrime(self,z):
-        return self.sigmoid(z)*(1-self.sigmoid(z))
+    def sigmoidPrime(self,x):
+        return self.sigmoid(x)*(1-self.sigmoid(x))
 
     def reLU(self,x):
         return np.maximum(x, 0)
@@ -65,11 +59,11 @@ class DeepNN:
     def softmax(self,x):
         return np.exp(x)/np.sum(np.exp(x), axis = 0)
 
-    def tanh(self,z):
-        return np.tanh(z)
+    def tanh(self,x):
+        return np.tanh(x)
 
     def tanh_prime(self,x):
-        return 1 - np.tanh(x)**2
+        return 1 - np.power(np.tanh(x),2)
 
     def identity(self,x):
         return x
@@ -229,7 +223,7 @@ class DeepNN:
                         print('Accuracy: ', np.mean(np.round(self.think(X))==y) * 100, '%')
                     elif(cost_func == 'least_squares'):
                         cost.append(self.least_squares_cost(y))
-                    print('Cost: ', cost[i], '\n')
+                    print('Cost: ', cost[-1], '\n')
 
         
 
@@ -243,7 +237,7 @@ class DeepNN:
         return self.weights
 
     def think(self,X):
-
+#         X = self.scaler.fit_transform(X)
         a = [X] # Keep Track of activations
         z = []
 
@@ -268,15 +262,18 @@ class DeepNN:
         return a[-1]
 
 
+# In[83]:
+
 
 ########################## Part a) - Generate Dataset
 X = np.array([[-1, -1],[1, 1],[-1, 1],[1, -1]],dtype='float')
 t = np.array([1, 1, 0, 0],dtype='float').reshape(4,1)
 
 
-NN = DeepNN([2,2,1], activations=['tanh','tanh','sigmoid'])
+NN = DeepNN([2,2,1], activations=['tanh','sigmoid'], epsilon = 0.12)
 
 w = NN.learn(epochs=1500, learning_rate=0.1, X=X, y=t, cost_func='log_loss', metrics_at=1, split=False)
+plt.title('XOR Cost Function')
 print('Accuracy: ',np.mean(np.round(NN.think(X))==t) * 100)
 
 
@@ -302,7 +299,7 @@ from mpl_toolkits.mplot3d import Axes3D
 
 fig = plt.figure()
 ax = plt.axes(projection='3d')
-ax.contour3D(X_mesh, Y_mesh, predicitions-0.475,1000)
+ax.contour3D(X_mesh, Y_mesh, predicitions-0.5,1000)
 
 x_xor = [-1, 1, -1, 1]
 y_xor = [-1, 1, 1, -1]
@@ -311,7 +308,53 @@ ax.set_xlabel('x')
 ax.set_ylabel('y')
 ax.set_zlabel('z')
 ax.scatter(x_xor, y_xor, t_xor, c='r')
+plt.title('XOR Decision Surface using Logistic Sigmoid')
+
+
+# Part - b Generate Dataset
+plt.figure()
+np.random.seed(100)
+X = np.sort(2*np.random.rand(50,1)-1)
+t = np.sin(2*(np.pi)*X) + 0.3*np.random.randn(50,1)
+
+# Part - b Regression
+np.random.seed(100)
+X = np.sort(2*np.random.rand(50,1)-1)
+t = np.sin(2*(np.pi)*X) + 0.3*np.random.randn(50,1)
+
+
+# Build NN with 20 hidden units
+NN2 = DeepNN([1,2,1], activations=['tanh','identity'],epsilon=0.9)
+w = NN2.learn(epochs=50000, learning_rate=0.001, X=X, y=t, cost_func='least_squares', metrics_at=10000, optimizer='rmsprop',batch_size=50)
+plt.title('Regression with 20 Hidden Units Cost Function')
+
+# plot the model
+x_mesh = np.linspace(np.min(X),np.max(X),500).reshape(500,1)
+y = NN2.think(x_mesh)
+
+
+plt.figure()
+plt.plot(x_mesh,y,'r')
+plt.scatter(X,t)
+plt.title('Regression with 20 hidden Units')
+
+# Build NN with 20 hidden units
+plt.figure()
+NN2 = DeepNN([1,20,1], activations=['tanh','identity'],epsilon=2.1)
+w = NN2.learn(epochs=10000, learning_rate=0.001, X=X, y=t, cost_func='least_squares', metrics_at=1000, optimizer='rmsprop',batch_size=5)
+plt.title('Regression with 20 Hidden Units Cost Function')
+
+# plot the model
+x_mesh = np.linspace(np.min(X)-0.25,np.max(X)+0.25,500).reshape(500,1)
+y = NN2.think(x_mesh)
+
+plt.figure()
+plt.plot(x_mesh, y, 'r')
+plt.scatter(X,t)
+plt.title('Regression with 20 hidden Units')
+
 plt.show()
+
 
 
 
